@@ -1,2 +1,3 @@
 bin/*
 *.privatekey
+KeyPrivate.hx
