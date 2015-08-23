@@ -1,8 +1,9 @@
 
+import haxe.io.Bytes;
+import haxe.io.BytesData;
 import luxe.Input;
 
 import hxgamejolt.GameJolt;
-
 
 class Main extends luxe.Game {
 
@@ -14,9 +15,15 @@ class Main extends luxe.Game {
 
     override function ready() {
 
+
+        var keystring = KeyPrivate.key; // This converts the ByteArray to a string.
+        var gameid = 87950; // Replace it with your game ID, visible if you go to http://gamejolt.com/dashboard/ -> Click on your game under "Manage Games" -> Click on "Game API" in the menu and "API Settings".
+
         GameJolt.init({
-            
+            GameID: gameid,
+            PrivateKey: keystring,
         });
+        GameJolt.authUser('zielak', '0471f3', authorized);
 
     } //ready
 
@@ -32,5 +39,14 @@ class Main extends luxe.Game {
 
     } //update
 
+
+
+
+
+
+
+    function authorized(data:Dynamic) {
+        
+    }
 
 } //Main

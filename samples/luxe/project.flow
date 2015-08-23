@@ -14,7 +14,7 @@
   project : {
     name : 'gamejolttest',
     version : '1.0.0',
-    author : 'Darek Greenlt',
+    author : 'Darek Greenly',
 
     app : {
       name : 'gamejolttest',
@@ -23,9 +23,9 @@
 
     build : {
       dependencies : {
-        hxgamejolt: '*'
+        hxgamejolt: '*',
         luxe : '*',
-        mint: '*',
+        mint: '*'
       }
     },
 

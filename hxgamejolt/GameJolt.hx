@@ -178,7 +178,7 @@ class GameJolt
         if (options.AutoAuth) {
             if (options.UserName != null && options.UserToken != null) {
                 authUser(options.UserName, options.UserToken, options.Callback);
-            } else if ((options.UserName == null || options.UserToken == null) && (isEmbeddedFlash || isQuickPlay)) {
+            } else if ((options.UserName == null || options.UserToken == null) /* && (isEmbeddedFlash || isQuickPlay) */) {
                 authUser(null, null, options.Callback);
             } else {
                 options.Callback(false);
@@ -396,7 +396,7 @@ class GameJolt
      * @param   ?ExtraData  Optional extra data associated with the score, which will NOT be visible on the site but can be retrieved by the API. Ignored if "".
      * @param   ?Callback   An optional callback function. Will return a Map<String:String> whose keys and values are equivalent to the key-value pairs returned by GameJolt.
      */
-    public static function addScore( options:AddScoreOptions, score:String, Sort:Float, ?TableID:Int, AllowGuest:Bool = false, ?options.guestName:String, ?options.extraData:String, ?Callback:Dynamic):Void
+    public static function addScore( options:AddScoreOptions):Void
     {
         if (!gameInit) return;
 
@@ -575,7 +575,7 @@ class GameJolt
         _callBack = Callback;
         
         if (_loader == null) {
-            _loader = new Http();
+            _loader = new Http('');
         }
         
 #if debug
@@ -584,26 +584,47 @@ class GameJolt
         }
 #end
         
-        _loader.onStatus = parseData();
+        _loader.onStatus = function(status){ getStatus(status); };
         _loader.url = url;
         _loader.request(true);
     }
     
     /**
-     * Called when the Http request has received data back.
+     * Called when the Http request has received change of status.
      * Will call _callBack() with the data received from GameJolt as Map<String,String> when done.
      * However, if we're getting an image, a second URLRequest is called, and that will be done first.
      * Or, if we're authenticating the user, the verifyAuthentication function will be called instead.
      * 
      * @param   The Http status.
      */
-    private static function parseData( status:Int ):Void
+    private static function getStatus( status:Int ):Void
     {
-        _loader.onStatus = null;
+        if( status == 200 ){
+            _loader.onData = function(data) { parseData(data); };
+        }
+        
+    }
+
+    /**
+     * Called when the Http request has received data back.
+     * Will call _callBack() with the data received from GameJolt as Map<String,String> when done.
+     * However, if we're getting an image, a second URLRequest is called, and that will be done first.
+     * Or, if we're authenticating the user, the verifyAuthentication function will be called instead.
+     * 
+     * @param   The Http data in string.
+     */
+    private static function parseData( data:String ):Void
+    {
+        
+#if debug
+        trace('GameJolt: data: ${data}');
+        trace('GameJolt: _loader.responseData: ${_loader.responseData}');
+#end
+    
         
         if (_loader.responseData == null) {
 #if debug
-            trace("hxGameJolt: received no data back. This is probably because one of the values it was passed is wrong.");
+            trace("GameJolt: received no data back. This is probably because one of the values it was passed is wrong.");
 #end
             
             return;
@@ -718,13 +739,13 @@ class GameJolt
         if ( ImageMap.exists( "image_url" ) )
         {
             var loader = new Http( ImageMap.get( "image_url" ) );
-            loader.onStatus = function(status){ returnImage(status, loader.responseData) };
+            loader.onStatus = function(status){ returnImage(status, loader.responseData); };
             loader.request();
         }
         else if ( ImageMap.exists( "avatar_url" ) )
         {
             var loader = new Http( ImageMap.get( "avatar_url" ) );
-            loader.onStatus = function(status){ returnImage(status, loader.responseData) };
+            loader.onStatus = function(status){ returnImage(status, loader.responseData); };
             loader.request();
         }
         else
