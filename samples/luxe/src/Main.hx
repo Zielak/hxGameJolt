@@ -14,7 +14,9 @@ class Main extends luxe.Game {
 
     override function ready() {
 
-        GameJolt.
+        GameJolt.init({
+            
+        });
 
     } //ready
 
