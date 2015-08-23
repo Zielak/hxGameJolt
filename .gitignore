@@ -1,3 +1,4 @@
 samples/*/bin/*
 *.privatekey
 KeyPrivate.hx
+devlog/*
