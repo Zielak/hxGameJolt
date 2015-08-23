@@ -20,13 +20,18 @@ class Main extends luxe.Game {
 
     var rendering: LuxeMintRender;
     var canvas: Canvas;
-    var window: Window;
 
+
+    var login_window: Window;
     var text_user: TextEdit;
     var text_token: TextEdit;
-
     var login_btn: Button;
     var cancel_btn: Button;
+
+
+
+    var trophies_window: Window;
+    var trophies_list: mint.List;
 
     override function config(config:luxe.AppConfig) {
 
@@ -36,7 +41,7 @@ class Main extends luxe.Game {
 
     override function ready() {
 
-        init_interface();
+        init_login_ui();
 
         var keystring = KeyPrivate.key; // This converts the ByteArray to a string.
         var gameid = 87950; // Replace it with your game ID, visible if you go to http://gamejolt.com/dashboard/ -> Click on your game under "Manage Games" -> Click on "Game API" in the menu and "API Settings".
@@ -80,6 +85,10 @@ class Main extends luxe.Game {
 
     override function onkeydown(e:luxe.Input.KeyEvent) {
         canvas.keydown( Convert.key_event(e) );
+
+        if(e.keycode == Key.key_i){
+            GameJolt.fetchAvatarImage( function(data){ trace('fetchAvatarImage: ${data}'); } );
+        }
     }
 
     override function ontextinput(e:luxe.Input.TextEvent) {
@@ -101,7 +110,7 @@ class Main extends luxe.Game {
 
 
 
-    function init_interface() {
+    function init_login_ui() {
 
         var w_w:Float = 256;
         var w_h:Float = 150;
@@ -115,7 +124,7 @@ class Main extends luxe.Game {
             x: 0, y:0, w: 960, h: 640
         });
 
-        window = new mint.Window({
+        login_window = new mint.Window({
             parent: canvas,
             name: 'window',
             title: 'Login to GameJolt',
@@ -132,19 +141,20 @@ class Main extends luxe.Game {
         });
 
         text_user = new mint.TextEdit({
-            parent: window, name: 'text_user', text: '', renderable: true,
+            parent: login_window, name: 'text_user', text: 'zielak', renderable: true,
             x: 10, y:32, w: w_w - 20 , h: 26,
             text_size: 18,
         });
 
         text_token = new mint.TextEdit({
-            parent: window, name: 'text_token', text: '', renderable: true,
+            parent: login_window, name: 'text_token', text: 'whatever', renderable: true,
             x: 10, y: 64, w: w_w - 20, h: 26,
             text_size: 18,
+            display_char: '#',
         });
 
         login_btn = new mint.Button({
-            parent: window, name: 'login_btn', text: 'LOGIN', renderable: true,
+            parent: login_window, name: 'login_btn', text: 'LOGIN', renderable: true,
             x: 10, y: 100, w: w_w*0.65-20, h: 36, text_size: 18,
             options: { label: { color:new Color().rgb(0xCBFE00) } },
             onclick: function(e,c) {
@@ -156,21 +166,62 @@ class Main extends luxe.Game {
         });
 
         cancel_btn = new mint.Button({
-            parent: window, name: 'cancel_btn', text: 'cancel', renderable: true,
+            parent: login_window, name: 'cancel_btn', text: 'cancel', renderable: true,
             x: 20+login_btn.w, y: 100, w: w_w*0.35-10, h: 36, text_size: 18,
             options: { label: { color:new Color().rgb(0x9dca63) } },
             onclick: function(e,c) {
-                window.close();
+                login_window.close();
             }
         });
+
+    }
+
+
+
+    function init_trophies_ui() {
+
+        trophies_window = new Window({
+            parent: canvas,
+            name: 'trophies_window',
+            title: 'Trophies',
+            options: {
+                color:new Color().rgb(0x121600),
+                color_titlebar:new Color().rgb(0x191919),
+                label: { color:new Color().rgb(0xFBBF06) },
+                close_button: { color:new Color().rgb(0xFBBF06) },
+            },
+            x:Luxe.screen.w/4, y:Luxe.screen.h/2 - 400/2, w:200, h: 400,
+            w_min: 200, h_min:100,
+            collapsible: false,
+            moveable: true,
+        });
+
+
+        trophies_list = new mint.List({
+            parent: trophies_window,
+            name: 'trophies_list',
+            options: { view: { color:new Color().rgb(0x19191c) } },
+            x: 1, y: 30, w: 198, h: 300
+        });
+
+
+        GameJolt.fetchTrophy( GameJolt.TROPHIES_MISSING, add_trophies );
+
+
+    }
+
+    function add_trophies(data:Dynamic) {
+        
+        trace(data);
+        trace('got Trophies?');
 
     }
 
     function authorized(data:Dynamic) {
         trace('authorized: ${data}');
         if(data == true){
-            window.close();
-            trace('User authorized, welcome');
+            login_window.close();
+            init_trophies_ui();
         }else{
             login_btn.visible = true;
             cancel_btn.visible = true;

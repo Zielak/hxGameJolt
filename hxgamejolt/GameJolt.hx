@@ -134,12 +134,19 @@ class GameJolt
      * Internal tracker for getting bitmapdata for a trophy image.
      */
     private static var _getImage:Bool = false;
+
+    /**
+     * Internal tracker for getting list of trophies.
+     */
+    private static var _getTrophies:Bool = false;
+
+    private static var _trophies:Array<Trophy>;
     
     /**
      * Http object for sending URL requests.
      */
     private static var _loader:Http;
-    
+
     /**
      * Various common strings required by the API's HTTP values.
      */
@@ -184,6 +191,8 @@ class GameJolt
                 options.Callback(false);
             }
         }
+
+        _trophies = new Array<Trophy>();
     }
     
     /**
@@ -317,7 +326,7 @@ class GameJolt
      * Retrieve trophy data. Requires user authentication.
      * 
      * @see     http://gamejolt.com/api/doc/game/trophies/fetch/
-     * @param   DataType    Pass FlxGameJolt.TROPHIES_MISSING or FlxGameJolt.TROPHIES_ACHIEVED to get the trophies this user is missing or already has, respectively.  Or, pass in a trophy ID # to see if this user has that trophy or not.  If unused or zero, will return all trophies.
+     * @param   DataType    Pass GameJolt.TROPHIES_MISSING or GameJolt.TROPHIES_ACHIEVED to get the trophies this user is missing or already has, respectively.  Or, pass in a trophy ID # to see if this user has that trophy or not.  If unused or zero, will return all trophies.
      * @param   ?Callback   An optional callback function. Will return a Map<String:String> whose keys and values are equivalent to the key-value pairs returned by GameJolt.
      */
     public static function fetchTrophy(DataType:Int = 0, ?Callback:Dynamic):Void
@@ -329,10 +338,13 @@ class GameJolt
         switch(DataType) {
             case 0:
                 tempURL += "&achieved=";
+                _getTrophies = true;
             case TROPHIES_MISSING:
                 tempURL += "&achieved=false";
+                _getTrophies = true;
             case TROPHIES_ACHIEVED:
                 tempURL += "&achieved=true";
+                _getTrophies = true;
             default:
                 tempURL += "&trophy_id=" + Std.string(DataType);
         }
@@ -568,7 +580,7 @@ class GameJolt
      * @param   URLString   The URL to send to. Usually formatted as the API url, section of the API (e.g. "trophies/") and then variables to pass (e.g. user name, trophy ID).
      * @param   ?Callback   A function to call when loading is done and data is parsed.
      */
-    private static function sendLoaderRequest(URLString:String, ?Callback:Dynamic):Void
+    private static function sendLoaderRequest(URLString:String, ?Callback:Dynamic ):Void
     {
         var url:String = URLString + "&signature=" + encryptURL(URLString);
         
@@ -607,7 +619,7 @@ class GameJolt
 
     /**
      * Called when the Http request has received data back.
-     * Will call _callBack() with the data received from GameJolt as Map<String,String> when done.
+     * Will call _callBack() with the data received from GameJolt as GJresponse when done.
      * However, if we're getting an image, a second URLRequest is called, and that will be done first.
      * Or, if we're authenticating the user, the verifyAuthentication function will be called instead.
      * 
@@ -615,52 +627,42 @@ class GameJolt
      */
     private static function parseData( data:String ):Void
     {
-        
+
 #if debug
-        trace('GameJolt: data: ${data}');
-        trace('GameJolt: _loader.responseData: ${_loader.responseData}');
+        // trace('GameJolt: data: ${data}');
+        // trace('GameJolt: _loader.responseData: ${_loader.responseData}');
 #end
     
         
         if (_loader.responseData == null) {
 #if debug
-            trace("GameJolt: received no data back. This is probably because one of the values it was passed is wrong.");
+            trace("hxGameJolt: received no data back. This is probably because one of the values it was passed is wrong.");
 #end
-            
             return;
         }
-        
-        var returnMap:Map<String,String> = new Map<String,String>();
-        var stringArray:Array<String> = Std.string(_loader.responseData).split("\r");
-        
-        // this regex will remove line breaks and quotes down below
-        var r:EReg = ~/[\r\n\t"]+/g;
-        
-        for ( string in stringArray ) {
-            // remove quotes, line breaks via regex
-            string = r.replace( string, "" );
-            if ( string.length > 1 ) {
-                var split:Int = string.indexOf( ":" );
-                var temp:Array<String> = [ string.substring( 0, split ), string.substring( split + 1, string.length ) ];
-                returnMap.set( temp[0], temp[1] );
-            }
-        }
+
+        var response:GJresponse = new GJresponse(data);
         
 #if debug
-        if ( returnMap.exists( "message" ) && verbose ) {
-            trace( "hxGameJolt: returned the following message: " + returnMap.get( "message" ) );
+        if ( response.map.exists( "message" ) && verbose ) {
+            trace( "hxGameJolt: returned the following message: " + response.map.get( "message" ) );
         }
 #end
         
         if ( _getImage ) {
-            retrieveImage( returnMap );
+            retrieveImage( response );
+            return;
+        }
+
+        if ( _getTrophies ) {
+            retrieveTrophies( response );
             return;
         }
         
         if ( _callBack != null && !_verifyAuth ) {
-            _callBack( returnMap );
+            _callBack( response ); // handle the string myself
         } else if ( _verifyAuth ) {
-            verifyAuthentication( returnMap );
+            verifyAuthentication( response );
         }
     }
     
@@ -669,9 +671,9 @@ class GameJolt
      * 
      * @param   ReturnMap   The data received back from GameJolt. This should be {"success"="true"} if authenticated, or {"success"="false"} otherwise.
      */
-    private static function verifyAuthentication( ReturnMap:Map<String,String> ):Void
+    private static function verifyAuthentication( response:GJresponse ):Void
     {
-        if ( ReturnMap.exists( "success" ) && ReturnMap.get( "success" ) == "true" ) {
+        if ( response.success == true ) {
             _initialized = true;
         } else {
             _userName = null;
@@ -718,11 +720,11 @@ class GameJolt
     }
     
     /**
-     * An easy-to-use function that returns the user's avatar image as BitmapData.
+     * An easy-to-use function that returns the user's avatar image as ??BitmapData.
      * Requires that you've authenticated the user's data.
      * All user images will be 60px by 60px.
      * 
-     * @param   ?Callback   An optional callback function. Must take a BitmapData object as a parameter.
+     * @param   ?Callback   An optional callback function. Must take a ??BitmapData object as a parameter.
      */
     public static function fetchAvatarImage( ?Callback:Dynamic -> Void ):Void
     {
@@ -734,18 +736,18 @@ class GameJolt
     /**
      * Internal function that uses the image_url or avatar_url element from GameJolt to start a Loader that will retrieve the desired image.
      */
-    private static function retrieveImage( ImageMap:Map<String,String> ):Void
+    private static function retrieveImage( response:GJresponse ):Void
     {
-        if ( ImageMap.exists( "image_url" ) )
+        if ( response.map.exists( "image_url" ) )
         {
-            var loader = new Http( ImageMap.get( "image_url" ) );
-            loader.onStatus = function(status){ returnImage(status, loader.responseData); };
+            var loader = new Http( response.map.get( "image_url" ) );
+            loader.onStatus = function(status){ returnImage(status, response.response); };
             loader.request();
         }
-        else if ( ImageMap.exists( "avatar_url" ) )
+        else if ( response.map.exists( "avatar_url" ) )
         {
-            var loader = new Http( ImageMap.get( "avatar_url" ) );
-            loader.onStatus = function(status){ returnImage(status, loader.responseData); };
+            var loader = new Http( response.map.get( "avatar_url" ) );
+            loader.onStatus = function(status){ returnImage(status, response.response); };
             loader.request();
         }
         else
@@ -755,7 +757,7 @@ class GameJolt
 #end
         }
     }
-    
+
     /**
      * Internal function to send the image_url or avatar_url content to the callback function as BitmapData.
      */
@@ -769,6 +771,52 @@ class GameJolt
         }
         
         _getImage = false;
+    }
+
+    /**
+     * Internal function.
+     */
+    private static function retrieveTrophies( response:GJresponse ):Void
+    {
+        var arr:Array<Trophy> = new Array<Trophy>();
+        var _t:Trophy = new Trophy();
+        var _s:String = '';
+        var _a:Array<String>;
+
+        var first:Bool = true;
+
+        for( str in response.strings ) {
+
+            if( str.substr(0, 7) == 'success' ) continue;
+
+            _a = str.split(':');
+
+            switch( _a[0] ) {
+                case 'id': _t.id = Std.parseInt(_a[1]);
+                case 'title': _t.title = _a[1];
+                case 'description': _t.description = _a[1];
+                case 'difficulty': _t.difficulty = _a[1];
+                case 'image_url': _t.image_url = _a[1];
+                case 'achieved': _t.achieved = (_a[1]  == 'true') ? true : false;
+            }
+
+            if( _a[0] == 'id' && !first ){
+                arr.push(_t);
+                _t = new Trophy();
+            }else if( _a[0] == 'id' && first ){
+                first = false;
+            }
+        }
+        // remember to push last
+        arr.push(_t);
+
+        _trophies = arr;
+
+        if ( _callBack != null ) {
+            _callBack( _trophies );
+        }
+
+        _getTrophies = false;
     }
     
     /**
@@ -884,3 +932,63 @@ class GameJolt
     }
     
 }
+
+
+
+class GJresponse {
+
+    public var success:Bool;
+    public var response:String;
+    public var strings:Array<String>;
+    public var map:Map<String,String>;
+
+    public function new( _data:String ) {
+
+        response = _data;
+
+        map = new Map<String,String>();
+        strings = Std.string(response).split("\r");
+
+        // this regex will remove line breaks and quotes down below
+        var r:EReg = ~/[\r\n\t"]+/g;
+        
+        var string:String = '';
+
+        for ( i in 0...strings.length ) {
+
+            string = strings[i];
+            // remove quotes, line breaks via regex
+            string = r.replace( string, '' );
+
+            if ( string.length > 1 ) {
+                var split:Int = string.indexOf( ":" );
+                var temp:Array<String> = [ string.substring( 0, split ), string.substring( split + 1, string.length ) ];
+                map.set( temp[0], temp[1] );
+            }
+            strings[i] = string;
+        }
+
+        // Set success, for quick access
+        if( map.exists('success') ){
+            success = ( map.get('success') == 'true' ) ? true : false ;
+        }
+
+
+    }
+
+}
+
+
+class Trophy {
+    public var achieved:Bool;      // "false"
+    public var description:String; // "The fourth."
+    public var difficulty:String;  // "Bronze"
+    public var id:Int;             // "39429"
+    public var image_url:String;   // "http://m.gjcdn.net/trophy-thumbnail/100/39429-vft4niky.jpg"
+    public var title:String;       // "4Bronze"
+
+    public function new() {
+
+    }
+}
+
