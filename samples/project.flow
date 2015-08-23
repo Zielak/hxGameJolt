@@ -1,0 +1,38 @@
+{
+
+  luxe:{
+    window: {
+      width:960,
+      height:640,
+      title:'GameJolt test',
+      fullscreen:false,
+      resizable:true,
+      borderless:false
+    }
+  },
+
+  project : {
+    name : 'gamejolttest',
+    version : '1.0.0',
+    author : 'Darek Greenlt',
+
+    app : {
+      name : 'gamejolttest',
+      package : 'com.darekgreenly.gamejolttest'
+    },
+
+    build : {
+      dependencies : {
+        hxgamejolt: '*'
+        luxe : '*',
+        mint: '*',
+      }
+    },
+
+    files : {
+      assets : 'assets/'
+    }
+
+  }
+
+}

@@ -1,0 +1,7 @@
+{
+  project : {
+    name : 'hxgamejoltapi',
+    version : '1.0.0',
+    author : 'Darek Greenly'
+  }
+}

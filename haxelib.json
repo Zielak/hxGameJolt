@@ -1,0 +1,12 @@
+{
+  "name": "hxgamejolt",
+  "url" : "https://github.com/Zielak/hxGameJolt",
+  "license": "MIT",
+  "tags": ["game", "gamejolt", "api"],
+  "description": "Allows access to the GameJolt API.",
+  "version": "0.0.1",
+  "classPath": "src/",
+  "releasenote": "First release.",
+  "contributors": ["Zielak"],
+  "dependencies": {}
+}
